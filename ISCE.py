@@ -32,12 +32,16 @@ def ejecutar_indicadores():
         procesar_temporales_td_saldo()
         procesar_temporales_td_sabana()
 
+        hablar("Ejecución finalizada")
+
         mostrar_info(
             "Proceso completado",
             f"Los indicadores del mes {MES_TRABAJO} fueron procesados correctamente."
         )
 
     except Exception as e:
+        hablar("La ejecución presentó errores")
+
         mostrar_error(
             "Error en la ejecución",
             f"Ocurrió un error durante el procesamiento:\n\n{str(e)}"
