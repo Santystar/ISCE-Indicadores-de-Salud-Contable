@@ -91,3 +91,27 @@ COLUMNAS_SABANA = [
 
 CELDA_INICIO_TD_SALDO = "A4"
 CELDA_INICIO_TD_SABANA = "E4"
+
+# ==============================
+# INFORME CXC
+# ==============================
+
+NOMBRE_BASE_CXC = "Informe CxC"
+
+HOJA_CXC_REFERENCIA = "cxc"
+HOJA_SABANA_CXC_REFERENCIA = "sabana cxc"
+
+COLUMNAS_CXC = [
+    "gerencia_responsable",
+    "SALDO CONTABLE",
+    "PARTIDAS FUERA DE POLITICA_y"
+]
+
+COLUMNAS_SABANA_CXC = [
+    "gerencia_responsable",
+    "VALOR PARTIDA PESOS",
+    "FUERA DE CICLO"
+]
+
+CELDA_INICIO_CXC_SALDO = "A36"
+CELDA_INICIO_CXC_SABANA = "E36"
