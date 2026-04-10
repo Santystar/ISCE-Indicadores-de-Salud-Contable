@@ -217,7 +217,7 @@ def procesar_certificacion_gerentes():
         celda_inicio=CELDA_INICIO_CERTIFICACION,
         columna_porcentaje=3,
         calcular_promedio=True,
-        formato_porcentaje='0.00%',
+        formato_porcentaje='0.0%',
         columnas_fecha=[1, 2]
     )
 
@@ -487,11 +487,19 @@ def procesar_temporales_td_sabana():
 
     ultima_fila = 4 + len(resumen_db_export)
 
+    ultima_fila_cxc = 36 + len(resumen_cr) 
+
     for fila_excel in range(5, ultima_fila + 1):
         for col in ["H", "I", "K", "L"]:
             ws[f"{col}{fila_excel}"].number_format = '#,##0'
 
+        # TEMPORALES
     for fila_excel in range(5, ultima_fila + 1):
+        ws[f"J{fila_excel}"].number_format = '0.0%'
+        ws[f"M{fila_excel}"].number_format = '0.0%'
+
+    # CXC (CORRECCIÓN CLAVE)
+    for fila_excel in range(37, ultima_fila_cxc + 1):
         ws[f"J{fila_excel}"].number_format = '0.0%'
         ws[f"M{fila_excel}"].number_format = '0.0%'
 
@@ -649,6 +657,73 @@ def procesar_cxc():
         nombre_archivo=NOMBRE_ARCHIVO_SALIDA,
         nombre_hoja=MES_TRABAJO,
         celda_inicio=CELDA_INICIO_CXC_SABANA,
+        columna_porcentaje=2,
+        formato_porcentaje='0.0%'
+    )
+
+        # ==============================
+    # DB / CR - SÁBANA CXC (VALORES)
+    # ==============================
+
+    # Separar DB y CR
+    df_sabana["DB"] = df_sabana["VALOR PARTIDA PESOS"].apply(lambda x: x if x > 0 else 0)
+    df_sabana["CR"] = df_sabana["VALOR PARTIDA PESOS"].apply(lambda x: abs(x) if x < 0 else 0)
+
+    df_sabana["DB_fuera"] = df_sabana.apply(
+        lambda x: x["DB"] if x["FUERA DE CICLO"] == "SI" else 0,
+        axis=1
+    )
+
+    df_sabana["CR_fuera"] = df_sabana.apply(
+        lambda x: x["CR"] if x["FUERA DE CICLO"] == "SI" else 0,
+        axis=1
+    )
+
+    resumen_valores = df_sabana.groupby("gerencia_responsable", as_index=False).agg({
+        "DB": "sum",
+        "DB_fuera": "sum",
+        "CR": "sum",
+        "CR_fuera": "sum"
+    })
+
+    resumen_valores = base_gerencias.merge(
+        resumen_valores,
+        on="gerencia_responsable",
+        how="left"
+    ).fillna(0)
+
+    resumen_valores["%_db"] = resumen_valores["DB_fuera"] / resumen_valores["DB"].replace(0, pd.NA)
+    resumen_valores["%_cr"] = resumen_valores["CR_fuera"] / resumen_valores["CR"].replace(0, pd.NA)
+
+    resumen_valores["%_db"] = resumen_valores["%_db"].fillna(0)
+    resumen_valores["%_cr"] = resumen_valores["%_cr"].fillna(0)
+
+    resumen_db = pd.DataFrame({
+    "TOTAL VALOR PARTIDAS PESOS DB": resumen_valores["DB"],
+    "VALOR PARTIDAS PESOS DB (FUERA POLITICA)": resumen_valores["DB_fuera"],
+    "%": resumen_valores["%_db"]
+    })
+
+    escribir_dataframe_en_excel(
+        df=resumen_db,
+        nombre_archivo=NOMBRE_ARCHIVO_SALIDA,
+        nombre_hoja=MES_TRABAJO,
+        celda_inicio="H36",
+        columna_porcentaje=2,
+        formato_porcentaje='0.0%'
+    )
+
+    resumen_cr = pd.DataFrame({
+    "TOTAL VALOR PARTIDAS PESOS CR": resumen_valores["CR"],
+    "VALOR PARTIDAS PESOS CR (FUERA POLITICA)": resumen_valores["CR_fuera"],
+    "%": resumen_valores["%_cr"]
+    })
+
+    escribir_dataframe_en_excel(
+        df=resumen_cr,
+        nombre_archivo=NOMBRE_ARCHIVO_SALIDA,
+        nombre_hoja=MES_TRABAJO,
+        celda_inicio="K36",
         columna_porcentaje=2,
         formato_porcentaje='0.0%'
     )

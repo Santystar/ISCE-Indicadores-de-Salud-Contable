@@ -10,9 +10,6 @@ from config.rutas import obtener_ruta_salida
 # ==============================
 
 def convertir_celda_a_fila_columna(celda):
-    """
-    Convierte una celda tipo 'A4' en fila y columna numérica.
-    """
     letras = ''.join([c for c in celda if c.isalpha()])
     numeros = ''.join([c for c in celda if c.isdigit()])
 
@@ -26,9 +23,6 @@ def convertir_celda_a_fila_columna(celda):
 
 
 def ajustar_ancho_columnas(hoja, columna_inicio, cantidad_columnas):
-    """
-    Ajusta el ancho de las columnas según el contenido.
-    """
     for col in range(columna_inicio, columna_inicio + cantidad_columnas):
         letra_columna = get_column_letter(col)
         ancho_maximo = 12
@@ -56,9 +50,6 @@ def escribir_dataframe_en_excel(
     columnas_fecha=None,
     calcular_promedio=False
 ):
-    """
-    Escribe un DataFrame en un archivo Excel sin borrar lo anterior.
-    """
 
     ruta_archivo = obtener_ruta_salida(nombre_archivo)
 
@@ -84,32 +75,51 @@ def escribir_dataframe_en_excel(
     fila_inicio, columna_inicio = convertir_celda_a_fila_columna(celda_inicio)
 
     # ==============================
-    # ESCRIBIR ENCABEZADOS
+    # ENCABEZADOS
     # ==============================
     for i, columna in enumerate(df.columns):
         hoja.cell(row=fila_inicio, column=columna_inicio + i, value=columna)
 
     # ==============================
-    # ESCRIBIR DATOS
+    # DATOS
     # ==============================
     for fila_idx, fila in enumerate(df.itertuples(index=False), start=1):
         for col_idx, valor in enumerate(fila, start=0):
+
             celda = hoja.cell(
                 row=fila_inicio + fila_idx,
-                column=columna_inicio + col_idx,
-                value=valor
+                column=columna_inicio + col_idx
             )
 
-            # Aplicar formato porcentaje
+            # =========================
+            # FORMATO PORCENTAJE
+            # =========================
             if columna_porcentaje is not None and col_idx == columna_porcentaje:
-                celda.number_format = formato_porcentaje
+                try:
+                    celda.value = float(valor)
+                    celda.number_format = formato_porcentaje
+                except:
+                    celda.value = 0
+                    celda.number_format = formato_porcentaje
 
-            # Aplicar formato fecha
-            if columnas_fecha and col_idx in columnas_fecha:
+            # =========================
+            # FORMATO FECHA
+            # =========================
+            elif columnas_fecha and col_idx in columnas_fecha:
+                celda.value = valor
                 celda.number_format = 'DD/MM/YYYY'
 
+            # =========================
+            # FORMATO NUMÉRICO
+            # =========================
+            else:
+                celda.value = valor
+
+                if isinstance(valor, (int, float)):
+                    celda.number_format = '#,##0'
+
     # ==============================
-    # CALCULAR PROMEDIO SI APLICA
+    # PROMEDIO (SI APLICA)
     # ==============================
     if calcular_promedio and columna_porcentaje is not None:
         fila_promedio = fila_inicio + len(df) + 1
@@ -130,7 +140,7 @@ def escribir_dataframe_en_excel(
         celda_promedio.number_format = formato_porcentaje
 
     # ==============================
-    # AJUSTAR ANCHO
+    # AJUSTE DE ANCHO
     # ==============================
     ajustar_ancho_columnas(hoja, columna_inicio, len(df.columns))
 
