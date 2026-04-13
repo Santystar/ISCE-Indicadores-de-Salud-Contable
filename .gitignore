@@ -4,3 +4,5 @@ __pycache__/
 datos/temporales/*
 datos/salida/
 ~$*.xlsx
+datos/entrada/*
+!datos/entrada/.gitkeep
