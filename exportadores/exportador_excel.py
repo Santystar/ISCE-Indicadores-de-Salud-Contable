@@ -37,7 +37,7 @@ def ajustar_ancho_columnas(hoja, columna_inicio, cantidad_columnas):
 
 
 # ==============================
-# FUNCIÓN PRINCIPAL DE ESCRITURA
+# FUNCIÓN PRINCIPAL
 # ==============================
 
 def escribir_dataframe_en_excel(
@@ -46,6 +46,7 @@ def escribir_dataframe_en_excel(
     nombre_hoja,
     celda_inicio,
     columna_porcentaje=None,
+    columnas_porcentaje=None,
     formato_porcentaje='0.0%',
     columnas_fecha=None,
     calcular_promedio=False
@@ -63,7 +64,7 @@ def escribir_dataframe_en_excel(
         wb.save(ruta_archivo)
 
     # ==============================
-    # CARGAR ARCHIVO EXISTENTE
+    # CARGAR ARCHIVO
     # ==============================
     wb = load_workbook(ruta_archivo)
 
@@ -78,7 +79,11 @@ def escribir_dataframe_en_excel(
     # ENCABEZADOS
     # ==============================
     for i, columna in enumerate(df.columns):
-        hoja.cell(row=fila_inicio, column=columna_inicio + i, value=columna)
+        hoja.cell(
+            row=fila_inicio,
+            column=columna_inicio + i,
+            value=columna
+        )
 
     # ==============================
     # DATOS
@@ -91,27 +96,38 @@ def escribir_dataframe_en_excel(
                 column=columna_inicio + col_idx
             )
 
-            # =========================
-            # FORMATO PORCENTAJE
-            # =========================
-            if columna_porcentaje is not None and col_idx == columna_porcentaje:
+            # --------------------------------
+            # FORMATO PORCENTAJE (MULTIPLE)
+            # --------------------------------
+            if columnas_porcentaje is not None and col_idx in columnas_porcentaje:
                 try:
                     celda.value = float(valor)
-                    celda.number_format = formato_porcentaje
                 except:
                     celda.value = 0
-                    celda.number_format = formato_porcentaje
 
-            # =========================
+                celda.number_format = formato_porcentaje
+
+            # --------------------------------
+            # FORMATO PORCENTAJE (SIMPLE)
+            # --------------------------------
+            elif columna_porcentaje is not None and col_idx == columna_porcentaje:
+                try:
+                    celda.value = float(valor)
+                except:
+                    celda.value = 0
+
+                celda.number_format = formato_porcentaje
+
+            # --------------------------------
             # FORMATO FECHA
-            # =========================
+            # --------------------------------
             elif columnas_fecha and col_idx in columnas_fecha:
                 celda.value = valor
                 celda.number_format = 'DD/MM/YYYY'
 
-            # =========================
+            # --------------------------------
             # FORMATO NUMÉRICO
-            # =========================
+            # --------------------------------
             else:
                 celda.value = valor
 
@@ -119,30 +135,48 @@ def escribir_dataframe_en_excel(
                     celda.number_format = '#,##0'
 
     # ==============================
-    # PROMEDIO (SI APLICA)
+    # PROMEDIO
     # ==============================
     if calcular_promedio and columna_porcentaje is not None:
+
         fila_promedio = fila_inicio + len(df) + 1
 
         columna_texto = columna_inicio + columna_porcentaje - 1
         columna_valor = columna_inicio + columna_porcentaje
 
-        hoja.cell(row=fila_promedio, column=columna_texto, value="Promedio")
+        hoja.cell(
+            row=fila_promedio,
+            column=columna_texto,
+            value="Promedio"
+        )
 
         rango_inicio = fila_inicio + 1
         rango_fin = fila_inicio + len(df)
 
         letra_columna = get_column_letter(columna_valor)
 
-        formula = f"=AVERAGE({letra_columna}{rango_inicio}:{letra_columna}{rango_fin})"
+        formula = (
+            f"=AVERAGE("
+            f"{letra_columna}{rango_inicio}:"
+            f"{letra_columna}{rango_fin})"
+        )
 
-        celda_promedio = hoja.cell(row=fila_promedio, column=columna_valor, value=formula)
+        celda_promedio = hoja.cell(
+            row=fila_promedio,
+            column=columna_valor,
+            value=formula
+        )
+
         celda_promedio.number_format = formato_porcentaje
 
     # ==============================
-    # AJUSTE DE ANCHO
+    # AJUSTAR ANCHO
     # ==============================
-    ajustar_ancho_columnas(hoja, columna_inicio, len(df.columns))
+    ajustar_ancho_columnas(
+        hoja,
+        columna_inicio,
+        len(df.columns)
+    )
 
     # ==============================
     # GUARDAR

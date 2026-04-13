@@ -6,7 +6,8 @@ from procesadores.procesador import (
     procesar_certificacion_gerentes,
     procesar_temporales_td_saldo,
     procesar_temporales_td_sabana,
-    procesar_cxc 
+    procesar_cxc,
+    procesar_cxp
 )
 
 # ==============================
@@ -33,6 +34,7 @@ def ejecutar_indicadores():
         procesar_temporales_td_saldo()
         procesar_temporales_td_sabana()
         procesar_cxc()
+        procesar_cxp()
 
         hablar("Ejecución finalizada")
 
