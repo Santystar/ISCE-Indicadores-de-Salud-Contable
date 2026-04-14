@@ -521,6 +521,7 @@ def procesar_cxc():
     Procesa el archivo Informe CxC:
     - Hoja CXC -> A36:D
     - Hoja Sábana CXC -> E36:G
+    - Valores DB / CR -> H36:M
     """
 
     # ==============================
@@ -533,7 +534,10 @@ def procesar_cxc():
     )
 
     df_cxc["gerencia_responsable"] = df_cxc["gerencia_responsable"].astype(str).str.strip()
-    df_cxc["SALDO CONTABLE"] = pd.to_numeric(df_cxc["SALDO CONTABLE"], errors="coerce").fillna(0)
+    df_cxc["SALDO CONTABLE"] = pd.to_numeric(
+        df_cxc["SALDO CONTABLE"], errors="coerce"
+    ).fillna(0)
+
     df_cxc["PARTIDAS FUERA DE POLITICA_y"] = pd.to_numeric(
         df_cxc["PARTIDAS FUERA DE POLITICA_y"], errors="coerce"
     ).fillna(0)
@@ -543,24 +547,36 @@ def procesar_cxc():
         (df_cxc["gerencia_responsable"].str.lower() != "nan")
     ]
 
-    # Eliminar saldo 0
     df_cxc = df_cxc[df_cxc["SALDO CONTABLE"] != 0]
 
-    # Base de gerencias de CXC
-    base_gerencias = construir_base_gerencias(df_cxc, "gerencia_responsable")
+    base_gerencias = construir_base_gerencias(
+        df_cxc,
+        "gerencia_responsable"
+    )
 
     df_cxc["total"] = 1
-    df_cxc["fuera"] = (df_cxc["PARTIDAS FUERA DE POLITICA_y"] > 0).astype(int)
+    df_cxc["fuera"] = (
+        df_cxc["PARTIDAS FUERA DE POLITICA_y"] > 0
+    ).astype(int)
 
-    resumen_cxc = df_cxc.groupby("gerencia_responsable", as_index=False).agg({
+    resumen_cxc = df_cxc.groupby(
+        "gerencia_responsable",
+        as_index=False
+    ).agg({
         "total": "sum",
         "fuera": "sum"
     })
 
-    resumen_cxc = base_gerencias.merge(resumen_cxc, on="gerencia_responsable", how="left").fillna(0)
+    resumen_cxc = base_gerencias.merge(
+        resumen_cxc,
+        on="gerencia_responsable",
+        how="left"
+    ).fillna(0)
 
-    resumen_cxc["%"] = resumen_cxc["fuera"] / resumen_cxc["total"].replace(0, pd.NA)
-    resumen_cxc["%"] = resumen_cxc["%"].fillna(0)
+    resumen_cxc["%"] = (
+        resumen_cxc["fuera"] /
+        resumen_cxc["total"].replace(0, pd.NA)
+    ).fillna(0)
 
     resumen_cxc_export = resumen_cxc.rename(columns={
         "gerencia_responsable": "Area",
@@ -568,15 +584,23 @@ def procesar_cxc():
         "fuera": "CUENTAS POR COBRAR FUERA DE POLITICA"
     })
 
-    resumen_cxc_export = resumen_cxc_export[[
-        "Area",
-        "TOTAL CUENTAS POR COBRAR CON SALDO",
-        "CUENTAS POR COBRAR FUERA DE POLITICA",
-        "%"
-    ]]
+    resumen_cxc_export = resumen_cxc_export[
+        [
+            "Area",
+            "TOTAL CUENTAS POR COBRAR CON SALDO",
+            "CUENTAS POR COBRAR FUERA DE POLITICA",
+            "%"
+        ]
+    ]
 
-    total_b = resumen_cxc_export["TOTAL CUENTAS POR COBRAR CON SALDO"].sum()
-    total_c = resumen_cxc_export["CUENTAS POR COBRAR FUERA DE POLITICA"].sum()
+    total_b = resumen_cxc_export[
+        "TOTAL CUENTAS POR COBRAR CON SALDO"
+    ].sum()
+
+    total_c = resumen_cxc_export[
+        "CUENTAS POR COBRAR FUERA DE POLITICA"
+    ].sum()
+
     total_d = total_c / total_b if total_b != 0 else 0
 
     fila_total = pd.DataFrame([{
@@ -586,7 +610,10 @@ def procesar_cxc():
         "%": total_d
     }])
 
-    resumen_cxc_export = pd.concat([resumen_cxc_export, fila_total], ignore_index=True)
+    resumen_cxc_export = pd.concat(
+        [resumen_cxc_export, fila_total],
+        ignore_index=True
+    )
 
     escribir_dataframe_en_excel(
         df=resumen_cxc_export,
@@ -606,39 +633,63 @@ def procesar_cxc():
         columnas_esperadas=COLUMNAS_SABANA_CXC
     )
 
-    df_sabana["gerencia_responsable"] = df_sabana["gerencia_responsable"].astype(str).str.strip()
-    df_sabana["FUERA DE CICLO"] = df_sabana["FUERA DE CICLO"].apply(normalizar_si_no)
-    df_sabana["VALOR PARTIDA PESOS"] = pd.to_numeric(df_sabana["VALOR PARTIDA PESOS"], errors="coerce").fillna(0)
+    df_sabana["gerencia_responsable"] = df_sabana[
+        "gerencia_responsable"
+    ].astype(str).str.strip()
+
+    df_sabana["FUERA DE CICLO"] = df_sabana[
+        "FUERA DE CICLO"
+    ].apply(normalizar_si_no)
+
+    df_sabana["VALOR PARTIDA PESOS"] = pd.to_numeric(
+        df_sabana["VALOR PARTIDA PESOS"],
+        errors="coerce"
+    ).fillna(0)
 
     df_sabana = df_sabana[
         (df_sabana["gerencia_responsable"] != "") &
         (df_sabana["gerencia_responsable"].str.lower() != "nan")
     ]
 
-    # Conteo de partidas
+    # ==============================
+    # E:G CONTEO PARTIDAS
+    # ==============================
     df_sabana["total"] = 1
-    df_sabana["fuera"] = (df_sabana["FUERA DE CICLO"] == "SI").astype(int)
+    df_sabana["fuera"] = (
+        df_sabana["FUERA DE CICLO"] == "SI"
+    ).astype(int)
 
-    resumen_sabana = df_sabana.groupby("gerencia_responsable", as_index=False).agg({
+    resumen_sabana = df_sabana.groupby(
+        "gerencia_responsable",
+        as_index=False
+    ).agg({
         "total": "sum",
         "fuera": "sum"
     })
 
-    resumen_sabana = base_gerencias.merge(resumen_sabana, on="gerencia_responsable", how="left").fillna(0)
+    resumen_sabana = base_gerencias.merge(
+        resumen_sabana,
+        on="gerencia_responsable",
+        how="left"
+    ).fillna(0)
 
-    resumen_sabana["%"] = resumen_sabana["fuera"] / resumen_sabana["total"].replace(0, pd.NA)
-    resumen_sabana["%"] = resumen_sabana["%"].fillna(0)
+    resumen_sabana["%"] = (
+        resumen_sabana["fuera"] /
+        resumen_sabana["total"].replace(0, pd.NA)
+    ).fillna(0)
 
     resumen_sabana_export = resumen_sabana.rename(columns={
         "total": "TOTAL PARTIDAS",
         "fuera": "PARTIDAS FUERA DE POLITICA"
     })
 
-    resumen_sabana_export = resumen_sabana_export[[
-        "TOTAL PARTIDAS",
-        "PARTIDAS FUERA DE POLITICA",
-        "%"
-    ]]
+    resumen_sabana_export = resumen_sabana_export[
+        [
+            "TOTAL PARTIDAS",
+            "PARTIDAS FUERA DE POLITICA",
+            "%"
+        ]
+    ]
 
     total_e = resumen_sabana_export["TOTAL PARTIDAS"].sum()
     total_f = resumen_sabana_export["PARTIDAS FUERA DE POLITICA"].sum()
@@ -650,7 +701,10 @@ def procesar_cxc():
         "%": total_g
     }])
 
-    resumen_sabana_export = pd.concat([resumen_sabana_export, fila_total_eg], ignore_index=True)
+    resumen_sabana_export = pd.concat(
+        [resumen_sabana_export, fila_total_eg],
+        ignore_index=True
+    )
 
     escribir_dataframe_en_excel(
         df=resumen_sabana_export,
@@ -661,13 +715,16 @@ def procesar_cxc():
         formato_porcentaje='0.0%'
     )
 
-        # ==============================
-    # DB / CR - SÁBANA CXC (VALORES)
     # ==============================
+    # H:M VALORES DB / CR
+    # ==============================
+    df_sabana["DB"] = df_sabana[
+        "VALOR PARTIDA PESOS"
+    ].apply(lambda x: x if x > 0 else 0)
 
-    # Separar DB y CR
-    df_sabana["DB"] = df_sabana["VALOR PARTIDA PESOS"].apply(lambda x: x if x > 0 else 0)
-    df_sabana["CR"] = df_sabana["VALOR PARTIDA PESOS"].apply(lambda x: abs(x) if x < 0 else 0)
+    df_sabana["CR"] = df_sabana[
+        "VALOR PARTIDA PESOS"
+    ].apply(lambda x: abs(x) if x < 0 else 0)
 
     df_sabana["DB_fuera"] = df_sabana.apply(
         lambda x: x["DB"] if x["FUERA DE CICLO"] == "SI" else 0,
@@ -679,7 +736,10 @@ def procesar_cxc():
         axis=1
     )
 
-    resumen_valores = df_sabana.groupby("gerencia_responsable", as_index=False).agg({
+    resumen_valores = df_sabana.groupby(
+        "gerencia_responsable",
+        as_index=False
+    ).agg({
         "DB": "sum",
         "DB_fuera": "sum",
         "CR": "sum",
@@ -692,17 +752,39 @@ def procesar_cxc():
         how="left"
     ).fillna(0)
 
-    resumen_valores["%_db"] = resumen_valores["DB_fuera"] / resumen_valores["DB"].replace(0, pd.NA)
-    resumen_valores["%_cr"] = resumen_valores["CR_fuera"] / resumen_valores["CR"].replace(0, pd.NA)
+    resumen_valores["%_db"] = (
+        resumen_valores["DB_fuera"] /
+        resumen_valores["DB"].replace(0, pd.NA)
+    ).fillna(0)
 
-    resumen_valores["%_db"] = resumen_valores["%_db"].fillna(0)
-    resumen_valores["%_cr"] = resumen_valores["%_cr"].fillna(0)
+    resumen_valores["%_cr"] = (
+        resumen_valores["CR_fuera"] /
+        resumen_valores["CR"].replace(0, pd.NA)
+    ).fillna(0)
 
+    # ------------------------------
+    # DB
+    # ------------------------------
     resumen_db = pd.DataFrame({
-    "TOTAL VALOR PARTIDAS PESOS DB": resumen_valores["DB"],
-    "VALOR PARTIDAS PESOS DB (FUERA POLITICA)": resumen_valores["DB_fuera"],
-    "%": resumen_valores["%_db"]
+        "TOTAL VALOR PARTIDAS PESOS DB": resumen_valores["DB"],
+        "VALOR PARTIDAS PESOS DB (FUERA POLITICA)": resumen_valores["DB_fuera"],
+        "%": resumen_valores["%_db"]
     })
+
+    total_h = resumen_db["TOTAL VALOR PARTIDAS PESOS DB"].sum()
+    total_i = resumen_db["VALOR PARTIDAS PESOS DB (FUERA POLITICA)"].sum()
+    total_j = total_i / total_h if total_h != 0 else 0
+
+    fila_total_db = pd.DataFrame([{
+        "TOTAL VALOR PARTIDAS PESOS DB": total_h,
+        "VALOR PARTIDAS PESOS DB (FUERA POLITICA)": total_i,
+        "%": total_j
+    }])
+
+    resumen_db = pd.concat(
+        [resumen_db, fila_total_db],
+        ignore_index=True
+    )
 
     escribir_dataframe_en_excel(
         df=resumen_db,
@@ -713,11 +795,29 @@ def procesar_cxc():
         formato_porcentaje='0.0%'
     )
 
+    # ------------------------------
+    # CR
+    # ------------------------------
     resumen_cr = pd.DataFrame({
-    "TOTAL VALOR PARTIDAS PESOS CR": resumen_valores["CR"],
-    "VALOR PARTIDAS PESOS CR (FUERA POLITICA)": resumen_valores["CR_fuera"],
-    "%": resumen_valores["%_cr"]
+        "TOTAL VALOR PARTIDAS PESOS CR": resumen_valores["CR"],
+        "VALOR PARTIDAS PESOS CR (FUERA POLITICA)": resumen_valores["CR_fuera"],
+        "%": resumen_valores["%_cr"]
     })
+
+    total_k = resumen_cr["TOTAL VALOR PARTIDAS PESOS CR"].sum()
+    total_l = resumen_cr["VALOR PARTIDAS PESOS CR (FUERA POLITICA)"].sum()
+    total_m = total_l / total_k if total_k != 0 else 0
+
+    fila_total_cr = pd.DataFrame([{
+        "TOTAL VALOR PARTIDAS PESOS CR": total_k,
+        "VALOR PARTIDAS PESOS CR (FUERA POLITICA)": total_l,
+        "%": total_m
+    }])
+
+    resumen_cr = pd.concat(
+        [resumen_cr, fila_total_cr],
+        ignore_index=True
+    )
 
     escribir_dataframe_en_excel(
         df=resumen_cr,
@@ -730,7 +830,7 @@ def procesar_cxc():
 
     return resumen_cxc_export, resumen_sabana_export
 
-    # ==============================
+# ==============================
 # CXP
 # ==============================
 
